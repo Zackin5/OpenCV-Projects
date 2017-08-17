@@ -4,7 +4,7 @@ int main()
 {
     int exitCode;
 
-    std::cout << "Choose program:\n1 - webcam stream\n2 - video background subtraction\n0 - exit" << std::endl;
+    std::cout << "Choose program:\n1 - webcam stream\n2 - video background subtraction\n3 - webcam stereo disparity\n0 - exit" << std::endl;
 
     exitCode = handleInputs();
 
@@ -32,6 +32,9 @@ int handleInputs()
         break;
     case '2':
         exitCode = videoBGSub();
+        break;
+    case '3':
+        exitCode = webcamStereo(0,2);
         break;
     default:
         std::cout << "Invalid input, try again" << std::endl;
@@ -241,6 +244,65 @@ int webcamBGSub(int webcamID, float windowscale, bool saveFrames, unsigned int s
     }
 
     return 0;
+}
+
+int webcamStereo(unsigned int camID_Left, unsigned int camID_Right)
+{
+    unsigned const int camIDs[2] = { camID_Left, camID_Right };
+    cv::VideoCapture camStream[2];
+    cv::Ptr<cv::StereoBM> stereoGen = cv::StereoBM::create(0, 21);
+
+    // Start the camera streams and ensure they're valid
+    for (int i = 0; i < 2; i++)
+    {
+
+        camStream[i].open(camIDs[i]);
+        if (!camStream[i].isOpened())
+        {
+            int error = -301 - i;
+
+            std::cout << "Failed to get webcam #" << camIDs[i] << "." << std::endl;
+
+            return error;
+        }
+    }
+
+    // Run the loop logic
+    for (;;)
+    {
+        cv::Mat frames[2], procFrames[2], depthM, depthDisp;
+
+        // Load the frames and ensure they're valid
+        for (int i = 0; i < 2; i++)
+        {
+            camStream[i] >> frames[i];
+
+            if (frames[i].empty())
+                return -341 - i;
+
+            // Generate the greyscale images
+            cv::cvtColor(frames[i], procFrames[i], CV_BGR2GRAY);
+        }
+
+        // Run stereo disparity 
+        depthM = cv::Mat(frames[0].rows, frames[1].cols, CV_16S);
+        depthDisp = cv::Mat(frames[0].rows, frames[1].cols, CV_8U);
+        stereoGen->compute(procFrames[0], procFrames[1], depthM);
+        
+        // Convert output mask image
+        double depthMin, depthMax;
+        cv::minMaxLoc(depthM, &depthMin, &depthMax);
+        cv::normalize(depthM, depthDisp, 0, 255, CV_MINMAX, CV_8U);
+
+        // Draw output windows
+        cv::imshow("Camera 0", frames[0]);
+        cv::imshow("Camera 1", frames[1]);
+        cv::imshow("Depth map", depthDisp);
+
+        // Break on keyboard input
+        if (cv::waitKey(30) >= 0)
+            break;
+    }
 }
 
 

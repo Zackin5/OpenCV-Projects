@@ -16,6 +16,8 @@ int videoBGSub();
 int webcamBGSub();
 int webcamBGSub(int webcam_ID, float window_scale, bool save_frames, unsigned int saved_frame_interval, bool background_train_on_initalize, int background_train_time);
 
+int webcamStereo(unsigned int camera_ID_left, unsigned int camera_ID_right);
+
 
 //** SUB FUNCTIONS **//
 
